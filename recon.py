@@ -409,8 +409,6 @@ def main():
                     # Desenhar a letra reconhecida no histograma de posição
                     reDrawHist(letterWhites, alphabetLetter.letterWhites)
 
-
-
         i += 1
         cv.waitKey(0)
         cv.destroyWindow("imageROI")
