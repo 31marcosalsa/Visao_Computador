@@ -142,22 +142,49 @@ def showMousePos(event, x, y, flags, param):
 
 
 # Calcular a área de um contorno
-def calcArea(contourArray):
-    area = cv.contourArea(contourArray[0])
-    print("Area: ", area)
+def calcROIArea(imageROI, imageROISize):
+    area = 0
+    for column in range(imageROISize[1]):
+        for row in range(imageROISize[0]):
+            if imageROI.item(row, column) == 255:
+                area += 1
+    print("Área: ", area)
     return area
 
 
 # Calcular o perímetro de um contorno
-def calcPerimeter(contourArray):
-    perimeter = cv.arcLength(contourArray[0], True)
-    print("Perimetro: ", perimeter)
+def calcROIPerimeter(imageROI, imageROISize):
+    perimeter = 0
+    for column in range(imageROISize[1]):
+        for row in range(imageROISize[0] - 1):
+            nextRow = row + 1
+            if imageROI.item(row, column) == 0 and imageROI.item(nextRow, column) == 255:
+                perimeter += 1
+                imageROI.itemset((row, column), 50)
+
+            if imageROI.item(row, column) == 255 and imageROI.item(nextRow, column) == 0:
+                perimeter += 1
+                imageROI.itemset((nextRow, column), 50)
+
+
+    for row in range(imageROISize[0]):
+        for column in range(imageROISize[1] - 1):
+            nextColumn = column + 1
+            if imageROI.item(row, column) == 0 and imageROI.item(row, nextColumn) == 255:
+                perimeter += 1
+                imageROI.itemset((row, column), 50)
+
+            if imageROI.item(row, column) == 255 and imageROI.item(row, nextColumn) == 0:
+                perimeter += 1
+                imageROI.itemset((row, nextColumn), 50)
+
+    print("Perímetro: ", perimeter)
     return perimeter
 
 
 # Calcular circularidade de um contorno(4*pi*(area / perimetro^2)
 # quanto + próximo de 1, + circular é
-def calcCirc(area, perimeter):
+def calcROICirc(area, perimeter):
     circularity = 4 * math.pi * (area / perimeter ** 2)
     print("Circularidade: ", circularity)
     return circularity
@@ -165,7 +192,7 @@ def calcCirc(area, perimeter):
 
 # Calcular compactividade (perimetro^2 / area)
 # quanto menor, + circular é
-def calcCompc(area, perimeter):
+def calcROICompc(area, perimeter):
     compactness = perimeter ** 2 / area
     print("Compactividade: ", compactness)
     return compactness
@@ -173,8 +200,6 @@ def calcCompc(area, perimeter):
 
 
 # def reconLetter(letter, area, perimeter, circularity, compactness, whites):
-
-
 
 
 # Histograma de Posição
@@ -253,22 +278,20 @@ def main():
         cv.rectangle(testImage, (topLeftX, topLeftY), (bottomRightX, bottomRightY), (0, 255, 0), 2)
 
         imageROI = thresholdImage[topLeftY: bottomRightY, topLeftX: bottomRightX]
+        imageROISize = imageROI.shape
         cv.imshow(imageName, testImage)
         cv.imshow("imageROI", imageROI)
 
+
         # Identificar a letra com base no seu ROI
-        # Contornos (contourArray vai sempre ter apenas 1 elemento em cada iteração)
-        contourImage, contourArray, contourHierarchy = cv.findContours(imageROI, cv.RETR_EXTERNAL,
-                                                                       cv.CHAIN_APPROX_SIMPLE)
-        # cv.imshow("imageCountour", contourImage)
 
-        area = calcArea(contourArray)
+        perimeter = calcROIPerimeter(imageROI, imageROISize)
 
-        perimeter = calcPerimeter(contourArray)
+        area = calcROIArea(imageROI, imageROISize)
 
-        circularity = calcCirc(area, perimeter)
+        circularity = calcROICirc(area, perimeter)
 
-        compactness = calcCompc(area, perimeter)
+        compactness = calcROICompc(area, perimeter)
 
         letterWhites = []
 
@@ -368,7 +391,6 @@ def main():
                         histDif = abs(letterWhites[value][1] - alphabetLetter.letterWhites[value][1])
                         totalHistDif += histDif
                         lastSmallestIndex = value
-
 
                     for remain in range(lastSmallestIndex, len(alphabetLetter.letterWhites)):
                         totalHistDif += alphabetLetter.letterWhites[remain][1]
