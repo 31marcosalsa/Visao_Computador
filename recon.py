@@ -61,7 +61,7 @@ def getPosHistogram(image, imageSize):
             if image.item(row, column) == 255:
                 whitePixel += 1
         whites.append(tuple((column, whitePixel)))
-    print(whites)
+    # print(whites)
     return whites
 
 
@@ -81,12 +81,12 @@ def getXPos(whites):
             letterPosX.append(tuple((xMin, xMax)))
             xMax = 0
 
-    print("Limites das letras eixo X: " + str(letterPosX))
+    print("Limites das letras eixo X: ", letterPosX)
     return letterPosX
 
 
 # Guardar posições iniciais e finais onde há letras no eixo do y
-def getYPos(letterPosX, image, imageSize):
+def getYPos(letterPosX, thresholdImage, imageSize):
     letterPosY = []
     for xPos in letterPosX:
         yMin = imageSize[0] - 1
@@ -94,18 +94,18 @@ def getYPos(letterPosX, image, imageSize):
         for column in range(xPos[0], xPos[1]):
             for row in range(imageSize[0] - 1):
                 nextRow = row + 1
-                if image.item(row, column) == 0 and image.item(nextRow, column) == 255:
+                if thresholdImage.item(row, column) == 0 and thresholdImage.item(nextRow, column) == 255:
                     if nextRow < yMin:
                         yMin = nextRow
 
-                if image.item(row, column) == 255 and image.item(nextRow, column) == 0:
+                if thresholdImage.item(row, column) == 255 and thresholdImage.item(nextRow, column) == 0:
                     if row > yMax:
                         yMax = row
 
         if yMin != imageSize[0] - 1 and yMax != 0:
             letterPosY.append(tuple((yMin, yMax)))
 
-    print("Limites das letras eixo Y: " + str(letterPosY))
+    print("Limites das letras eixo Y: ", letterPosY)
     return letterPosY
 
 
@@ -132,7 +132,7 @@ def letterPos(letterPosX, letterPosY):
         yMin = letterPosY[i][0]
         yMax = letterPosY[i][1]
         letterCoords.append(tuple((xMin, xMax, yMin, yMax)))
-    print("Limites das letras nos 2 eixos: " + str(letterCoords))
+    print("Limites das letras nos 2 eixos: ", letterCoords)
     return letterCoords
 
 
@@ -142,7 +142,7 @@ def showMousePos(event, x, y, flags, param):
         print("X -> " + str(x) + ", Y -> " + str(y))
 
 
-# Calcular a área de um contorno
+# Calcular a área da ROI/letra identificada
 def calcROIArea(imageROI, imageROISize):
     area = 0
     for column in range(imageROISize[1]):
@@ -153,36 +153,45 @@ def calcROIArea(imageROI, imageROISize):
     return area
 
 
-# Calcular o perímetro de um contorno
+# Calcular o perímetro da ROI/letra identificada
 def calcROIPerimeter(imageROI, imageROISize):
     perimeter = 0
+    borderPixels = []
+
+    # faz uma passagem vertical e conta os pixeis da border
     for column in range(imageROISize[1]):
         for row in range(imageROISize[0] - 1):
             nextRow = row + 1
             if imageROI.item(row, column) == 0 and imageROI.item(nextRow, column) == 255:
                 perimeter += 1
-                imageROI.itemset((row, column), 50)
+                borderPixels.append(tuple((row, column)))
+                # imageROI.itemset((row, column), 50)
 
             if imageROI.item(row, column) == 255 and imageROI.item(nextRow, column) == 0:
                 perimeter += 1
-                imageROI.itemset((nextRow, column), 50)
+                borderPixels.append(tuple((nextRow, column)))
+                # imageROI.itemset((nextRow, column), 50)
 
+
+    # faz uma passagem horizontal e conta os pixeis da border, tendo em atenção os pixeis já contados
     for row in range(imageROISize[0]):
         for column in range(imageROISize[1] - 1):
             nextColumn = column + 1
-            if imageROI.item(row, column) == 0 and imageROI.item(row, nextColumn) == 255:
+            if imageROI.item(row, column) == 0 and imageROI.item(row, nextColumn) == 255 and (row, column) not in borderPixels:
                 perimeter += 1
-                imageROI.itemset((row, column), 50)
+                borderPixels.append(tuple((row, column)))
+                # imageROI.itemset((row, column), 50)
 
-            if imageROI.item(row, column) == 255 and imageROI.item(row, nextColumn) == 0:
+            if imageROI.item(row, column) == 255 and imageROI.item(row, nextColumn) == 0 and (row, nextColumn) not in borderPixels:
                 perimeter += 1
-                imageROI.itemset((row, nextColumn), 50)
+                borderPixels.append(tuple((row, nextColumn)))
+                # imageROI.itemset((row, nextColumn), 50)
 
-    print("Perímetro: ", perimeter)
+    print("Perímetro: ", perimeter, ",Pixeis da border (row, column): ", borderPixels)
     return perimeter
 
 
-# Calcular circularidade de um contorno(4*pi*(area / perimetro^2)
+# Calcular circularidade da ROI/letra identificada(4*pi*(area / perimetro^2)
 # quanto + próximo de 1, + circular é
 def calcROICirc(area, perimeter):
     circularity = 4 * math.pi * (area / perimeter ** 2)
@@ -190,7 +199,7 @@ def calcROICirc(area, perimeter):
     return circularity
 
 
-# Calcular compactividade (perimetro^2 / area)
+# Calcular compactividade da ROI/letra identificada (perimetro^2 / area)
 # quanto menor, + circular é
 def calcROICompc(area, perimeter):
     compactness = perimeter ** 2 / area
@@ -229,12 +238,12 @@ def reDrawHist(whites, reconWhites):
 def main():
     alphabetLetterParams = []
     # TODO
-    imageInput = "m.png"
+    imageInput = "a.png"
     imageName = imageInput.partition(".")[0]
     imageExtension = imageInput.partition(".")[2]
     testImage = readImage(imageInput)
     imageSize = testImage.shape
-    print(imageSize)
+    print("Image Input Size: ", imageSize)
 
     # Operações morfológicas na imagem de teste
     # Greyscale
@@ -284,232 +293,82 @@ def main():
 
         compactness = calcROICompc(area, perimeter)
 
+        # histograma com as posições X APENAS onde há pixeis não pretos [(posX, número pixeis brancos)]
         letterWhites = []
 
         for j in range(letterPosX[i][0], letterPosX[i][1] + 1):
             letterWhites.append(whites[j])
 
-        print(letterWhites)
-        print(len(letterWhites))
-        # ========== #
-        minHistDif = imageROISize[0] * imageROISize[1]
-        print(minHistDif)
+        print("letterWhites: ", letterWhites, "\nlen(letterWhites): ", len(letterWhites))
+
+
+        # =================================================================================================================================== #
+
 
         # letterRecogn = reconLetter(letter, area, perimeter, circularity, compactness, whites)
         a_letter = Letter()
         a_letter.letterName = "a"
         # a.letterWhites[0][1]
         a_letter.letterWhites = [(0, 6), (1, 13), (2, 18), (3, 22), (4, 24), (5, 28), (6, 30), (7, 28), (8, 25),
-                                 (9, 23),
-                                 (10, 23), (11, 21), (12, 21), (13, 19), (14, 21), (15, 21), (16, 21), (17, 21),
-                                 (18, 20),
-                                 (19, 20), (20, 21), (21, 20), (22, 21), (23, 22), (24, 22), (25, 22), (26, 22),
-                                 (27, 25),
-                                 (28, 34), (29, 39), (30, 38), (31, 38), (32, 37), (33, 35), (34, 31), (35, 4), (36, 1)]
+                                 (9, 23), (10, 23), (11, 21), (12, 21), (13, 19), (14, 21), (15, 21), (16, 21),
+                                 (17, 21), (18, 20), (19, 20), (20, 21), (21, 20), (22, 21), (23, 22), (24, 22),
+                                 (25, 22), (26, 22), (27, 25), (28, 34), (29, 39), (30, 38), (31, 38), (32, 37),
+                                 (33, 35), (34, 31), (35, 4), (36, 1)]
         a_letter.letterArea = 857
         a_letter.letterPerimeter = 233
         a_letter.letterCircularity = 0.19837130204103615
         a_letter.letterCompactness = 63.34772462077013
 
+
         b_letter = Letter()
         b_letter.letterName = "b"
         # a.letterWhites[0][1]
         b_letter.letterWhites = [(0, 55), (1, 55), (2, 55), (3, 55), (4, 55), (5, 55), (6, 45), (7, 14), (8, 13),
-                                 (9, 14),
-                                 (10, 13),
-                                 (11, 13), (12, 14), (13, 14), (14, 13), (15, 14), (16, 14), (17, 14), (18, 14),
-                                 (19, 14),
-                                 (20, 14),
-                                 (21, 16), (22, 14), (23, 16), (24, 18), (25, 18), (26, 20), (27, 24), (28, 34),
-                                 (29, 32),
-                                 (30, 30),
-                                 (31, 27), (32, 24), (33, 19), (34, 12)]
+                                 (9, 14), (10, 13), (11, 13), (12, 14), (13, 14), (14, 13), (15, 14), (16, 14),
+                                 (17, 14), (18, 14), (19, 14), (20, 14), (21, 16), (22, 14), (23, 16), (24, 18),
+                                 (25, 18), (26, 20), (27, 24), (28, 34), (29, 32), (30, 30), (31, 27), (32, 24),
+                                 (33, 19), (34, 12)]
         b_letter.letterArea = 851
         b_letter.letterPerimeter = 144
         b_letter.letterCircularity = 0.5157205532802689
         b_letter.letterCompactness = 24.36662749706228
 
+
         c_letter = Letter()
         c_letter.letterName = "c"
         # a.letterWhites[0][1]
         c_letter.letterWhites = [(0, 6), (1, 17), (2, 22), (3, 26), (4, 30), (5, 32), (6, 34), (7, 26), (8, 20),
-                                 (9, 18),
-                                 (10, 16),
-                                 (11, 16), (12, 15), (13, 14), (14, 16), (15, 14), (16, 14), (17, 14), (18, 14),
-                                 (19, 14),
-                                 (20, 14),
-                                 (21, 14), (22, 15), (23, 14), (24, 15), (25, 16), (26, 16), (27, 20), (28, 23),
-                                 (29, 22),
-                                 (30, 21),
-                                 (31, 17), (32, 14), (33, 10), (34, 4), (35, 1)]
+                                 (9, 18), (10, 16), (11, 16), (12, 15), (13, 14), (14, 16), (15, 14), (16, 14),
+                                 (17, 14), (18, 14), (19, 14), (20, 14), (21, 14), (22, 15), (23, 14), (24, 15),
+                                 (25, 16), (26, 16), (27, 20), (28, 23), (29, 22), (30, 21), (31, 17), (32, 14),
+                                 (33, 10), (34, 4), (35, 1)]
         c_letter.letterArea = 604
         c_letter.letterPerimeter = 144
         c_letter.letterCircularity = 0.3660343292376997
         c_letter.letterCompactness = 34.33112582781457
 
+
         d_letter = Letter()
         d_letter.letterName = "d"
         # a.letterWhites[0][1]
         d_letter.letterWhites = [(0, 12), (1, 19), (2, 24), (3, 27), (4, 30), (5, 32), (6, 34), (7, 23), (8, 19),
-                                 (9, 18),
-                                 (10, 18),
-                                 (11, 16), (12, 14), (13, 16), (14, 15), (15, 14), (16, 14), (17, 14), (18, 14),
-                                 (19, 14),
-                                 (20, 13),
-                                 (21, 14), (22, 14), (23, 14), (24, 13), (25, 14), (26, 14), (27, 14), (28, 43),
-                                 (29, 55),
-                                 (30, 55),
-                                 (31, 55), (32, 55), (33, 55), (34, 55)]
+                                 (9, 18), (10, 18), (11, 16), (12, 14), (13, 16), (14, 15), (15, 14), (16, 14),
+                                 (17, 14), (18, 14), (19, 14), (20, 13), (21, 14), (22, 14), (23, 14), (24, 13),
+                                 (25, 14), (26, 14), (27, 14), (28, 43), (29, 55), (30, 55), (31, 55), (32, 55),
+                                 (33, 55), (34, 55)]
         d_letter.letterArea = 807
         d_letter.letterPerimeter = 151
         d_letter.letterCircularity = 0.4447638737681615
         d_letter.letterCompactness = 28.254027261462205
 
-        e_letter = Letter()
-        e_letter.letterName = "e"
-        # a.letterWhites[0][1]
-        e_letter.letterWhites = [(0, 10), (1, 18), (2, 23), (3, 26), (4, 29), (5, 32), (6, 34), (7, 29), (8, 26),
-                                 (9, 25),
-                                 (10, 23),
-                                 (11, 23), (12, 22), (13, 21), (14, 22), (15, 21), (16, 21), (17, 21), (18, 21),
-                                 (19, 21),
-                                 (20, 21),
-                                 (21, 21), (22, 21), (23, 21), (24, 21), (25, 22), (26, 22), (27, 23), (28, 25),
-                                 (29, 27),
-                                 (30, 29),
-                                 (31, 27), (32, 25), (33, 21), (34, 18), (35, 14), (36, 8)]
-        e_letter.letterArea = 816
-        e_letter.letterPerimeter = 175
-        e_letter.letterCircularity = 0.3348296627368844
-        e_letter.letterCompactness = 37.53063725490196
-
-        f_letter = Letter()
-        f_letter.letterName = "f"
-        # a.letterWhites[0][1]
-        f_letter.letterWhites = [(0, 7), (1, 7), (2, 7), (3, 7), (4, 7), (5, 7), (6, 48), (7, 52), (8, 52), (9, 51),
-                                 (10, 53),
-                                 (11, 55),
-                                 (12, 55), (13, 16), (14, 15), (15, 14), (16, 14), (17, 14), (18, 14), (19, 14),
-                                 (20, 14),
-                                 (21, 7), (22, 7),
-                                 (23, 1)]
-        f_letter.letterArea = 530
-        f_letter.letterPerimeter = 133
-        f_letter.letterCircularity = 0.3765151464531834
-        f_letter.letterCompactness = 33.37547169811321
-
-        g_letter = Letter()
-        g_letter.letterName = "g"
-        # a.letterWhites[0][1]
-        g_letter.letterWhites = [(0, 13), (1, 23), (2, 29), (3, 35), (4, 37), (5, 40), (6, 42), (7, 32), (8, 28),
-                                 (9, 24),
-                                 (10, 23),
-                                 (11, 22), (12, 19), (13, 21), (14, 19), (15, 19), (16, 19), (17, 19), (18, 19),
-                                 (19, 19),
-                                 (20, 19),
-                                 (21, 19), (22, 20), (23, 21), (24, 21), (25, 22), (26, 24), (27, 27), (28, 39),
-                                 (29, 52),
-                                 (30, 51),
-                                 (31, 50), (32, 49), (33, 46), (34, 42)]
-        g_letter.letterArea = 940
-        g_letter.letterPerimeter = 190
-        g_letter.letterCircularity = 0.3272129744459175
-        g_letter.letterCompactness = 38.40425531914894
-
-        h_letter = Letter()
-        h_letter.letterName = "h"
-        h_letter.letterWhites = [(0, 55), (1, 55), (2, 55), (3, 55), (4, 55), (5, 55), (6, 55), (7, 9), (8, 7), (9, 6),
-                                 (10, 6), (11, 7),
-                                 (12, 6), (13, 7), (14, 6), (15, 7), (16, 7), (17, 7), (18, 7), (19, 7), (20, 7),
-                                 (21, 8),
-                                 (22, 8), (23, 8),
-                                 (24, 9), (25, 11), (26, 39), (27, 39), (28, 38), (29, 37), (30, 36), (31, 34),
-                                 (32, 30)]
-        h_letter.letterArea = 735
-        h_letter.letterPerimeter = 119
-        h_letter.letterCircularity = 0.6522337689113757
-        h_letter.letterCompactness = 19.266666666666666
-
-        i_letter = Letter()
-        i_letter.letterName = "i"
-        i_letter.letterWhites = [(0, 47), (1, 47), (2, 47), (3, 47), (4, 47), (5, 47), (6, 47)]
-        i_letter.letterArea = 329
-        i_letter.letterPerimeter = 122
-        i_letter.letterCircularity = 0.2777704872429567
-        i_letter.letterCompactness = 45.24012158054711
-
-        j_letter = Letter()
-        j_letter.letterName = "j"
-        j_letter.letterWhites = [(0, 5), (1, 5), (2, 5), (3, 6), (4, 6), (5, 61), (6, 61), (7, 61), (8, 61), (9, 60),
-                                 (10, 59), (11, 55)]
-        j_letter.letterArea = 381
-        j_letter.letterPerimeter = 72
-        j_letter.letterCircularity = 0.9235700625136659
-        j_letter.letterCompactness = 13.606299212598426
-
-        k_letter = Letter()
-        k_letter.letterName = "k"
-        k_letter.letterWhites = [(0, 55), (1, 55), (2, 55), (3, 55), (4, 55), (5, 55), (6, 55), (7, 8), (8, 8), (9, 8),
-                                 (10, 8), (11, 8), (12, 9), (13, 11), (14, 14), (15, 16), (16, 19), (17, 20), (18, 19),
-                                 (19, 20), (20, 20), (21, 20), (22, 20), (23, 20), (24, 19), (25, 18), (26, 16),
-                                 (27, 13),
-                                 (28, 11), (29, 9), (30, 7), (31, 5), (32, 2), (33, 1)]
-        k_letter.letterArea = 718
-        k_letter.letterPerimeter = 132
-        k_letter.letterCircularity = 0.5178290921206317
-        k_letter.letterCompactness = 24.26740947075209
-
-        l_letter = Letter()
-        l_letter.letterName = "l"
-        l_letter.letterWhites = [(0, 55), (1, 55), (2, 55), (3, 55), (4, 55), (5, 55), (6, 55), (7, 8), (8, 8), (9, 8),
-                                 (10, 8), (11, 8), (12, 9), (13, 11), (14, 14), (15, 16), (16, 19), (17, 20), (18, 19),
-                                 (19, 20), (20, 20), (21, 20), (22, 20), (23, 20), (24, 19), (25, 18), (26, 16),
-                                 (27, 13),
-                                 (28, 11), (29, 9), (30, 7), (31, 5), (32, 2), (33, 1)]
-        l_letter.letterArea = 718
-        l_letter.letterPerimeter = 132
-        l_letter.letterCircularity = 0.5178290921206317
-        l_letter.letterCompactness = 24.26740947075209
-
-        m_letter = Letter()
-        m_letter.letterName = "m"
-        m_letter.letterWhites = [(0, 40), (1, 40), (2, 40), (3, 40), (4, 40), (5, 40), (6, 33), (7, 9), (8, 7), (9, 6),
-                                 (10, 6), (11, 7), (12, 6), (13, 7), (14, 6), (15, 7), (16, 7), (17, 7), (18, 7),
-                                 (19, 7),
-                                 (20, 7), (21, 8), (22, 9), (23, 9), (24, 40), (25, 39), (26, 39), (27, 38), (28, 36),
-                                 (29, 34), (30, 33), (31, 9), (32, 7), (33, 6), (34, 6), (35, 6), (36, 6), (37, 6),
-                                 (38, 6),
-                                 (39, 7), (40, 7), (41, 7), (42, 7), (43, 7), (44, 8), (45, 8), (46, 9), (47, 9),
-                                 (48, 40),
-                                 (49, 40), (50, 39), (51, 38), (52, 37), (53, 36), (54, 33), (55, 1)]
-        m_letter.letterArea = 1039
-        m_letter.letterPerimeter = 311
-        m_letter.letterCircularity = 0.13499094372803405
-        m_letter.letterCompactness = 93.09047160731473
-
-        o_letter = Letter()
-        o_letter.letterName = "o"
-        o_letter.letterWhites = [(0, 14), (1, 20), (2, 24), (3, 28), (4, 30), (5, 32), (6, 34), (7, 24), (8, 18),
-                                 (9, 18),
-                                 (10, 16),
-                                 (11, 16), (12, 14), (13, 14), (14, 16), (15, 14), (16, 14), (17, 14), (18, 14),
-                                 (19, 14),
-                                 (20, 14),
-                                 (21, 14), (22, 16), (23, 14), (24, 14), (25, 16), (26, 16), (27, 18), (28, 18),
-                                 (29, 24),
-                                 (30, 34),
-                                 (31, 32), (32, 30), (33, 28), (34, 24), (35, 20), (36, 14)]
-        o_letter.letterArea = 734
-        o_letter.letterPerimeter = 192
-        o_letter.letterCircularity = 0.2502093107351246
-        o_letter.letterCompactness = 50.223433242506815
-
-        print(len(a_letter.letterWhites))
+        # print(len(a_letter.letterWhites))
 
         alphabetLetterParams.append(a_letter)
         alphabetLetterParams.append(b_letter)
         alphabetLetterParams.append(c_letter)
         alphabetLetterParams.append(d_letter)
+
+        """
         alphabetLetterParams.append(e_letter)
         alphabetLetterParams.append(f_letter)
         alphabetLetterParams.append(g_letter)
@@ -519,54 +378,68 @@ def main():
         alphabetLetterParams.append(k_letter)
         alphabetLetterParams.append(l_letter)
         alphabetLetterParams.append(m_letter)
+        """
 
-        # para todas as letras default
-        # for a in LettersARRAY
+
+        # Reconhecer a letra identificada com base nos parâmetros medidos e comparando com os parâmetros das letras default
+        print("-> STARTED HISTS EVAL")
+
+        minHistDif = imageROISize[0] * imageROISize[1]
+
 
         for alphabetLetter in alphabetLetterParams:
+            print("lenWhitesInput: ", len(letterWhites), "  letterTryingToRecon: ", alphabetLetter.letterName, " len", len(alphabetLetter.letterWhites))
 
+
+            # se os histogramas tiverem um tamanho próximo, então avalia a diferença que há no número de pixeis ao longo das posições
             if abs(len(letterWhites) - len(alphabetLetter.letterWhites)) < 5:
                 totalHistDif = 0
-                lastSmallestIndex = 0
+                lastSmallestCommonIndex = 0
 
                 if len(letterWhites) > len(alphabetLetter.letterWhites):
-                    print("hist input larger")
+                    print("    hist input larger")
 
+                    # percorre primeiro o histograma mais pequeno
                     for value in range(len(alphabetLetter.letterWhites)):
                         histDif = abs(letterWhites[value][1] - alphabetLetter.letterWhites[value][1])
-                        print(histDif)
+                        # print(histDif)
                         totalHistDif += histDif
-                        lastSmallestIndex = value
+                        lastSmallestCommonIndex = value
 
-                    for remain in range(lastSmallestIndex, len(letterWhites)):
+                    # percorre depois o resto
+                    for remain in range(lastSmallestCommonIndex + 1, len(letterWhites)):
                         totalHistDif += letterWhites[remain][1]
 
-                    print(totalHistDif)
+                    print("    TotalHistDif: ", totalHistDif)
 
 
                 elif len(letterWhites) < len(alphabetLetter.letterWhites):
-                    print("hist input smaller")
+                    print("    hist input smaller")
+
                     for value in range(len(letterWhites)):
                         histDif = abs(letterWhites[value][1] - alphabetLetter.letterWhites[value][1])
                         totalHistDif += histDif
-                        lastSmallestIndex = value
+                        lastSmallestCommonIndex = value
 
-                    for remain in range(lastSmallestIndex, len(alphabetLetter.letterWhites)):
+                    for remain in range(lastSmallestCommonIndex + 1, len(alphabetLetter.letterWhites)):
                         totalHistDif += alphabetLetter.letterWhites[remain][1]
 
-                    print(totalHistDif)
+                    print("    TotalHistDif: ", totalHistDif)
 
                 else:
-                    print("hist input equal")
+                    print("    hist input equal")
                     for value in range(len(letterWhites)):
                         histDif = abs(letterWhites[value][1] - alphabetLetter.letterWhites[value][1])
-                        print(histDif)
+                        # print(histDif)
                         totalHistDif += histDif
 
-                    print(totalHistDif)
+                    print("    TotalHistDif: ", totalHistDif)
 
-                if totalHistDif < 50 and totalHistDif < minHistDif and abs(
-                        circularity - alphabetLetter.letterCircularity) < 0.1:
+
+                # Após calcular a diferença total
+                print("    -> STARTED LETTER EVAL")
+
+                if totalHistDif < 50 and totalHistDif < minHistDif and abs(circularity - alphabetLetter.letterCircularity) < 0.1:
                     minHistDif = totalHistDif
                     mostNearLetter = alphabetLetter
 
@@ -599,22 +472,6 @@ def main():
     cv.setMouseCallback(imageName, showMousePos)
     cv.waitKey(0)
     cv.destroyAllWindows()
-
-    """
-        # Skeleton
-        imageSize = thresholdImage.shape
-        skeleton = np.zeros(imageSize, np.uint8)
-        eroded = np.zeros(imageSize, np.uint8)
-        tmp = np.zeros(imageSize, np.uint8)
-        structuringElement = cv.MORPH_RECT
-        kernel = cv.getStructuringElement(structuringElement, imageSize[0]*imageSize[1])
-        while cv.countNonZero(thresholdImage) != 0:
-            cv.erode(thresholdImage, kernel, eroded)
-            cv.dilate(eroded, kernel, tmp)
-            cv.subtract(thresholdImage, tmp, tmp)
-            cv.bitwise_or(skeleton, tmp, skeleton)
-            thresholdImage, eroded = eroded, thresholdImage
-    """
 
 
 # Iniciar Programa
@@ -781,4 +638,148 @@ def main():
     cv.waitKey(0)
     cv.destroyAllWindows()
     return
+    
+    
+    
+    
+    
+        e_letter = Letter()
+        e_letter.letterName = "e"
+        # a.letterWhites[0][1]
+        e_letter.letterWhites = [(0, 10), (1, 18), (2, 23), (3, 26), (4, 29), (5, 32), (6, 34), (7, 29), (8, 26),
+                                 (9, 25),
+                                 (10, 23),
+                                 (11, 23), (12, 22), (13, 21), (14, 22), (15, 21), (16, 21), (17, 21), (18, 21),
+                                 (19, 21),
+                                 (20, 21),
+                                 (21, 21), (22, 21), (23, 21), (24, 21), (25, 22), (26, 22), (27, 23), (28, 25),
+                                 (29, 27),
+                                 (30, 29),
+                                 (31, 27), (32, 25), (33, 21), (34, 18), (35, 14), (36, 8)]
+        e_letter.letterArea = 816
+        e_letter.letterPerimeter = 175
+        e_letter.letterCircularity = 0.3348296627368844
+        e_letter.letterCompactness = 37.53063725490196
+
+        f_letter = Letter()
+        f_letter.letterName = "f"
+        # a.letterWhites[0][1]
+        f_letter.letterWhites = [(0, 7), (1, 7), (2, 7), (3, 7), (4, 7), (5, 7), (6, 48), (7, 52), (8, 52), (9, 51),
+                                 (10, 53),
+                                 (11, 55),
+                                 (12, 55), (13, 16), (14, 15), (15, 14), (16, 14), (17, 14), (18, 14), (19, 14),
+                                 (20, 14),
+                                 (21, 7), (22, 7),
+                                 (23, 1)]
+        f_letter.letterArea = 530
+        f_letter.letterPerimeter = 133
+        f_letter.letterCircularity = 0.3765151464531834
+        f_letter.letterCompactness = 33.37547169811321
+
+        g_letter = Letter()
+        g_letter.letterName = "g"
+        # a.letterWhites[0][1]
+        g_letter.letterWhites = [(0, 13), (1, 23), (2, 29), (3, 35), (4, 37), (5, 40), (6, 42), (7, 32), (8, 28),
+                                 (9, 24),
+                                 (10, 23),
+                                 (11, 22), (12, 19), (13, 21), (14, 19), (15, 19), (16, 19), (17, 19), (18, 19),
+                                 (19, 19),
+                                 (20, 19),
+                                 (21, 19), (22, 20), (23, 21), (24, 21), (25, 22), (26, 24), (27, 27), (28, 39),
+                                 (29, 52),
+                                 (30, 51),
+                                 (31, 50), (32, 49), (33, 46), (34, 42)]
+        g_letter.letterArea = 940
+        g_letter.letterPerimeter = 190
+        g_letter.letterCircularity = 0.3272129744459175
+        g_letter.letterCompactness = 38.40425531914894
+
+        h_letter = Letter()
+        h_letter.letterName = "h"
+        h_letter.letterWhites = [(0, 55), (1, 55), (2, 55), (3, 55), (4, 55), (5, 55), (6, 55), (7, 9), (8, 7), (9, 6),
+                                 (10, 6), (11, 7),
+                                 (12, 6), (13, 7), (14, 6), (15, 7), (16, 7), (17, 7), (18, 7), (19, 7), (20, 7),
+                                 (21, 8),
+                                 (22, 8), (23, 8),
+                                 (24, 9), (25, 11), (26, 39), (27, 39), (28, 38), (29, 37), (30, 36), (31, 34),
+                                 (32, 30)]
+        h_letter.letterArea = 735
+        h_letter.letterPerimeter = 119
+        h_letter.letterCircularity = 0.6522337689113757
+        h_letter.letterCompactness = 19.266666666666666
+
+        i_letter = Letter()
+        i_letter.letterName = "i"
+        i_letter.letterWhites = [(0, 47), (1, 47), (2, 47), (3, 47), (4, 47), (5, 47), (6, 47)]
+        i_letter.letterArea = 329
+        i_letter.letterPerimeter = 122
+        i_letter.letterCircularity = 0.2777704872429567
+        i_letter.letterCompactness = 45.24012158054711
+
+        j_letter = Letter()
+        j_letter.letterName = "j"
+        j_letter.letterWhites = [(0, 5), (1, 5), (2, 5), (3, 6), (4, 6), (5, 61), (6, 61), (7, 61), (8, 61), (9, 60),
+                                 (10, 59), (11, 55)]
+        j_letter.letterArea = 381
+        j_letter.letterPerimeter = 72
+        j_letter.letterCircularity = 0.9235700625136659
+        j_letter.letterCompactness = 13.606299212598426
+
+        k_letter = Letter()
+        k_letter.letterName = "k"
+        k_letter.letterWhites = [(0, 55), (1, 55), (2, 55), (3, 55), (4, 55), (5, 55), (6, 55), (7, 8), (8, 8), (9, 8),
+                                 (10, 8), (11, 8), (12, 9), (13, 11), (14, 14), (15, 16), (16, 19), (17, 20), (18, 19),
+                                 (19, 20), (20, 20), (21, 20), (22, 20), (23, 20), (24, 19), (25, 18), (26, 16),
+                                 (27, 13),
+                                 (28, 11), (29, 9), (30, 7), (31, 5), (32, 2), (33, 1)]
+        k_letter.letterArea = 718
+        k_letter.letterPerimeter = 132
+        k_letter.letterCircularity = 0.5178290921206317
+        k_letter.letterCompactness = 24.26740947075209
+
+        l_letter = Letter()
+        l_letter.letterName = "l"
+        l_letter.letterWhites = [(0, 55), (1, 55), (2, 55), (3, 55), (4, 55), (5, 55), (6, 55), (7, 8), (8, 8), (9, 8),
+                                 (10, 8), (11, 8), (12, 9), (13, 11), (14, 14), (15, 16), (16, 19), (17, 20), (18, 19),
+                                 (19, 20), (20, 20), (21, 20), (22, 20), (23, 20), (24, 19), (25, 18), (26, 16),
+                                 (27, 13),
+                                 (28, 11), (29, 9), (30, 7), (31, 5), (32, 2), (33, 1)]
+        l_letter.letterArea = 718
+        l_letter.letterPerimeter = 132
+        l_letter.letterCircularity = 0.5178290921206317
+        l_letter.letterCompactness = 24.26740947075209
+
+        m_letter = Letter()
+        m_letter.letterName = "m"
+        m_letter.letterWhites = [(0, 40), (1, 40), (2, 40), (3, 40), (4, 40), (5, 40), (6, 33), (7, 9), (8, 7), (9, 6),
+                                 (10, 6), (11, 7), (12, 6), (13, 7), (14, 6), (15, 7), (16, 7), (17, 7), (18, 7),
+                                 (19, 7),
+                                 (20, 7), (21, 8), (22, 9), (23, 9), (24, 40), (25, 39), (26, 39), (27, 38), (28, 36),
+                                 (29, 34), (30, 33), (31, 9), (32, 7), (33, 6), (34, 6), (35, 6), (36, 6), (37, 6),
+                                 (38, 6),
+                                 (39, 7), (40, 7), (41, 7), (42, 7), (43, 7), (44, 8), (45, 8), (46, 9), (47, 9),
+                                 (48, 40),
+                                 (49, 40), (50, 39), (51, 38), (52, 37), (53, 36), (54, 33), (55, 1)]
+        m_letter.letterArea = 1039
+        m_letter.letterPerimeter = 311
+        m_letter.letterCircularity = 0.13499094372803405
+        m_letter.letterCompactness = 93.09047160731473
+
+        o_letter = Letter()
+        o_letter.letterName = "o"
+        o_letter.letterWhites = [(0, 14), (1, 20), (2, 24), (3, 28), (4, 30), (5, 32), (6, 34), (7, 24), (8, 18),
+                                 (9, 18),
+                                 (10, 16),
+                                 (11, 16), (12, 14), (13, 14), (14, 16), (15, 14), (16, 14), (17, 14), (18, 14),
+                                 (19, 14),
+                                 (20, 14),
+                                 (21, 14), (22, 16), (23, 14), (24, 14), (25, 16), (26, 16), (27, 18), (28, 18),
+                                 (29, 24),
+                                 (30, 34),
+                                 (31, 32), (32, 30), (33, 28), (34, 24), (35, 20), (36, 14)]
+        o_letter.letterArea = 734
+        o_letter.letterPerimeter = 192
+        o_letter.letterCircularity = 0.2502093107351246
+        o_letter.letterCompactness = 50.223433242506815
+        
 """
