@@ -449,7 +449,7 @@ def main():
 
         compactness = calcROICompc(area, perimeter)
 
-        # histograma de posição da letra a ser identificada [(posX, número pixeis brancos)]
+        # Histograma de posição só da letra a ser identificada [(posX, número pixeis brancos)] e não de todas as letras que se encontram na imagem input
         letterHistPos = getPositionHistogramOfLetter(letterPosX, baseArrayForPosHistogram, letterOrder)
 
 
@@ -474,11 +474,10 @@ def main():
             if abs(len(letterHistPos) - len(alphabetLetter.letterHistPos)) < 5:
                 totalHistDif = getTotalPixelDiffBetweenHists(letterHistPos, alphabetLetter.letterHistPos)
 
-                # Após calcular a diferença total, avaliar a letra com parâmetros mais próximos
+                # após calcular a diferença total, avaliar a letra com parâmetros mais próximos
                 print("      -> STARTED LETTER EVAL")
 
-
-
+                # Avaliar se a letra default e seus parâmetros se aproximam dos mesmos parâmetros medidos para a letra a ser identificada
                 if totalHistDif < 50 and totalHistDif < minHistDif and abs(circularity - alphabetLetter.letterCircularity) < 0.1:
                     minHistDif = totalHistDif
                     mostNearLetter = alphabetLetter
