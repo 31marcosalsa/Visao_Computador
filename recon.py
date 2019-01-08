@@ -119,6 +119,7 @@ def drawHist(whites):
     plt.bar(xAxis, yAxis, color=(0, 0.63, 0.9))
     plt.xlabel("Posição X")
     plt.ylabel("Número Pixeis Brancos")
+    plt.legend(["letra(s) input"])
     plt.title("Histograma Posição Imagem / Número Píxeis Brancos")
     plt.show()
 
@@ -149,13 +150,12 @@ def calcROIArea(imageROI, imageROISize):
         for row in range(imageROISize[0]):
             if imageROI.item(row, column) == 255:
                 area += 1
-    print("Área: ", area)
+    print("  Área: ", area)
     return area
 
 
 # Calcular o perímetro da ROI/letra identificada
 def calcROIPerimeter(imageROI, imageROISize):
-    perimeter = 0
     borderPixels = []
 
     # faz uma passagem vertical e conta os pixeis da border
@@ -163,39 +163,30 @@ def calcROIPerimeter(imageROI, imageROISize):
         for row in range(imageROISize[0] - 1):
             nextRow = row + 1
             if imageROI.item(row, column) == 0 and imageROI.item(nextRow, column) == 255:
-                perimeter += 1
                 borderPixels.append(tuple((row, column)))
-                # imageROI.itemset((row, column), 50)
 
             if imageROI.item(row, column) == 255 and imageROI.item(nextRow, column) == 0:
-                perimeter += 1
                 borderPixels.append(tuple((nextRow, column)))
-                # imageROI.itemset((nextRow, column), 50)
-
 
     # faz uma passagem horizontal e conta os pixeis da border, tendo em atenção os pixeis já contados
     for row in range(imageROISize[0]):
         for column in range(imageROISize[1] - 1):
             nextColumn = column + 1
             if imageROI.item(row, column) == 0 and imageROI.item(row, nextColumn) == 255 and (row, column) not in borderPixels:
-                perimeter += 1
                 borderPixels.append(tuple((row, column)))
-                # imageROI.itemset((row, column), 50)
 
             if imageROI.item(row, column) == 255 and imageROI.item(row, nextColumn) == 0 and (row, nextColumn) not in borderPixels:
-                perimeter += 1
                 borderPixels.append(tuple((row, nextColumn)))
-                # imageROI.itemset((row, nextColumn), 50)
 
-    print("Perímetro: ", perimeter, ",Pixeis da border (row, column): ", borderPixels)
-    return perimeter
+    print("  Perímetro: ", len(borderPixels), ",Pixeis da border (row, column): ", borderPixels)
+    return len(borderPixels)
 
 
 # Calcular circularidade da ROI/letra identificada(4*pi*(area / perimetro^2)
 # quanto + próximo de 1, + circular é
 def calcROICirc(area, perimeter):
     circularity = 4 * math.pi * (area / perimeter ** 2)
-    print("Circularidade: ", circularity)
+    print("  Circularidade: ", circularity)
     return circularity
 
 
@@ -203,7 +194,7 @@ def calcROICirc(area, perimeter):
 # quanto menor, + circular é
 def calcROICompc(area, perimeter):
     compactness = perimeter ** 2 / area
-    print("Compactividade: ", compactness)
+    print("  Compactividade: ", compactness)
     return compactness
 
 
@@ -217,7 +208,7 @@ def reDrawHist(whites, reconWhites):
     yAxis1 = []
     yAxis2 = []
 
-    print(len(whites))
+    # print(len(whites))
     space = 0
     for i in range(len(whites)):
         xAxis1.append(whites[i][0] + space)
@@ -230,7 +221,8 @@ def reDrawHist(whites, reconWhites):
     plt.bar(xAxis2, yAxis2, color=(0, 1, 0))
     plt.xlabel("Pos_X Original = Pos_X no hist - ((número de linhas do hist. até à posição) -1) *2)")
     plt.ylabel("Número Pixeis Brancos")
-    plt.title("Histograma De Comparação Entre Píxeis Brancos Por Posição")
+    plt.legend(["letra input", "letra reconhecida"])
+    plt.title("Histograma De Comparação Entre Pixeis Brancos Por Posição")
     plt.show()
 
 
@@ -238,7 +230,7 @@ def reDrawHist(whites, reconWhites):
 def main():
     alphabetLetterParams = []
     # TODO
-    imageInput = "a.png"
+    imageInput = "atst.png"
     imageName = imageInput.partition(".")[0]
     imageExtension = imageInput.partition(".")[2]
     testImage = readImage(imageInput)
@@ -267,14 +259,17 @@ def main():
     # Definir os limites das letras no espaço num único array [(xMin, xMax, yMin, yMax)]
     letterCoords = letterPos(letterPosX, letterPosY)
 
-    # Definir a ROI na imagem inicial
+    # Definir a ROI na imagem inicial, para cada letra identificada atraves do histograma
     # topLeftX = xMin; topLeftY = yMin; bottomRightX = xMax; bottomRightY = yMax
     i = 0
-    for letter in letterCoords:
-        topLeftX = letter[0] - 4
-        topLeftY = letter[2] - 4
-        bottomRightX = letter[1] + 4
-        bottomRightY = letter[3] + 4
+    for letterPosition in letterCoords:
+        print("NOVA LETRA RECONHECIDA:  ")
+
+        # Recorta a ROI apenas com 1 pixel preto na borda da imagem (necessario para o algoritmo de calculo do perimetro)
+        topLeftX = letterPosition[0] - 1
+        topLeftY = letterPosition[2] - 1
+        bottomRightX = letterPosition[1] + 1
+        bottomRightY = letterPosition[3] + 1
 
         cv.rectangle(testImage, (topLeftX, topLeftY), (bottomRightX, bottomRightY), (0, 255, 0), 2)
 
@@ -283,8 +278,7 @@ def main():
         cv.imshow(imageName, testImage)
         cv.imshow("imageROI", imageROI)
 
-        # Identificar a letra com base no seu ROI
-
+        # Calcular perimetro, area, circularidade e compactividade da letra identificada
         perimeter = calcROIPerimeter(imageROI, imageROISize)
 
         area = calcROIArea(imageROI, imageROISize)
@@ -299,7 +293,7 @@ def main():
         for j in range(letterPosX[i][0], letterPosX[i][1] + 1):
             letterWhites.append(whites[j])
 
-        print("letterWhites: ", letterWhites, "\nlen(letterWhites): ", len(letterWhites))
+        print("  letterWhites: ", letterWhites, "\n  len(letterWhites): ", len(letterWhites))
 
 
         # =================================================================================================================================== #
@@ -315,9 +309,9 @@ def main():
                                  (25, 22), (26, 22), (27, 25), (28, 34), (29, 39), (30, 38), (31, 38), (32, 37),
                                  (33, 35), (34, 31), (35, 4), (36, 1)]
         a_letter.letterArea = 857
-        a_letter.letterPerimeter = 233
-        a_letter.letterCircularity = 0.19837130204103615
-        a_letter.letterCompactness = 63.34772462077013
+        a_letter.letterPerimeter = 223
+        a_letter.letterCircularity = 0.21656135487353073
+        a_letter.letterCompactness = 58.02683780630105
 
 
         b_letter = Letter()
@@ -328,10 +322,10 @@ def main():
                                  (17, 14), (18, 14), (19, 14), (20, 14), (21, 16), (22, 14), (23, 16), (24, 18),
                                  (25, 18), (26, 20), (27, 24), (28, 34), (29, 32), (30, 30), (31, 27), (32, 24),
                                  (33, 19), (34, 12)]
-        b_letter.letterArea = 851
-        b_letter.letterPerimeter = 144
-        b_letter.letterCircularity = 0.5157205532802689
-        b_letter.letterCompactness = 24.36662749706228
+        b_letter.letterArea = 871
+        b_letter.letterPerimeter = 225
+        b_letter.letterCircularity = 0.2162036307181598
+        b_letter.letterCompactness = 58.12284730195178
 
 
         c_letter = Letter()
@@ -342,10 +336,10 @@ def main():
                                  (17, 14), (18, 14), (19, 14), (20, 14), (21, 14), (22, 15), (23, 14), (24, 15),
                                  (25, 16), (26, 16), (27, 20), (28, 23), (29, 22), (30, 21), (31, 17), (32, 14),
                                  (33, 10), (34, 4), (35, 1)]
-        c_letter.letterArea = 604
-        c_letter.letterPerimeter = 144
-        c_letter.letterCircularity = 0.3660343292376997
-        c_letter.letterCompactness = 34.33112582781457
+        c_letter.letterArea = 614
+        c_letter.letterPerimeter = 169
+        c_letter.letterCircularity = 0.2701499092194437
+        c_letter.letterCompactness = 46.51628664495114
 
 
         d_letter = Letter()
@@ -356,10 +350,10 @@ def main():
                                  (17, 14), (18, 14), (19, 14), (20, 13), (21, 14), (22, 14), (23, 14), (24, 13),
                                  (25, 14), (26, 14), (27, 14), (28, 43), (29, 55), (30, 55), (31, 55), (32, 55),
                                  (33, 55), (34, 55)]
-        d_letter.letterArea = 807
-        d_letter.letterPerimeter = 151
-        d_letter.letterCircularity = 0.4447638737681615
-        d_letter.letterCompactness = 28.254027261462205
+        d_letter.letterArea = 870
+        d_letter.letterPerimeter = 182
+        d_letter.letterCircularity = 0.33005501855127645
+        d_letter.letterCompactness = 38.0735632183908
 
         # print(len(a_letter.letterWhites))
 
@@ -382,13 +376,14 @@ def main():
 
 
         # Reconhecer a letra identificada com base nos parâmetros medidos e comparando com os parâmetros das letras default
-        print("-> STARTED HISTS EVAL")
+        print("    -> STARTED HISTS EVAL")
 
         minHistDif = imageROISize[0] * imageROISize[1]
+        mostNearLetter = "Nada Reconhecido"
 
 
         for alphabetLetter in alphabetLetterParams:
-            print("lenWhitesInput: ", len(letterWhites), "  letterTryingToRecon: ", alphabetLetter.letterName, " len", len(alphabetLetter.letterWhites))
+            print("    lenWhitesInput: ", len(letterWhites), "  letterTryingToRecon: ", alphabetLetter.letterName, " len", len(alphabetLetter.letterWhites))
 
 
             # se os histogramas tiverem um tamanho próximo, então avalia a diferença que há no número de pixeis ao longo das posições
@@ -402,7 +397,6 @@ def main():
                     # percorre primeiro o histograma mais pequeno
                     for value in range(len(alphabetLetter.letterWhites)):
                         histDif = abs(letterWhites[value][1] - alphabetLetter.letterWhites[value][1])
-                        # print(histDif)
                         totalHistDif += histDif
                         lastSmallestCommonIndex = value
 
@@ -430,38 +424,40 @@ def main():
                     print("    hist input equal")
                     for value in range(len(letterWhites)):
                         histDif = abs(letterWhites[value][1] - alphabetLetter.letterWhites[value][1])
-                        # print(histDif)
                         totalHistDif += histDif
 
                     print("    TotalHistDif: ", totalHistDif)
 
 
                 # Após calcular a diferença total
-                print("    -> STARTED LETTER EVAL")
+                print("      -> STARTED LETTER EVAL")
 
                 if totalHistDif < 50 and totalHistDif < minHistDif and abs(circularity - alphabetLetter.letterCircularity) < 0.1:
                     minHistDif = totalHistDif
                     mostNearLetter = alphabetLetter
 
-                    print("Letra Reconhecida: ", mostNearLetter.letterName)
 
-                    areaDif = abs(area - alphabetLetter.letterArea)
-                    print("Diferenças na área: " + str(areaDif))
+        # Apresentar a letra reconhecida depois de avaliar o histograma da letra reconhecida com os histogramas de todas as letras default
+        print("Letra Reconhecida: ", mostNearLetter.letterName)
 
-                    perimeterDif = abs(perimeter - alphabetLetter.letterPerimeter)
-                    print("Diferenças no perímetro: " + str(perimeterDif))
+        areaDif = abs(area - mostNearLetter.letterArea)
+        print("Diferenças na área: " + str(areaDif))
 
-                    areaDif = abs(area - alphabetLetter.letterArea)
-                    print("Diferenças na área: " + str(areaDif))
+        perimeterDif = abs(perimeter - mostNearLetter.letterPerimeter)
+        print("Diferenças no perímetro: " + str(perimeterDif))
 
-                    circularityDif = abs(circularity - alphabetLetter.letterCircularity)
-                    print("Diferenças na circularidade: " + str(circularityDif))
+        areaDif = abs(area - mostNearLetter.letterArea)
+        print("Diferenças na área: " + str(areaDif))
 
-                    compactnessDif = abs(compactness - alphabetLetter.letterCompactness)
-                    print("Diferenças na compactness: " + str(compactnessDif))
+        circularityDif = abs(circularity - mostNearLetter.letterCircularity)
+        print("Diferenças na circularidade: " + str(circularityDif))
 
-                    # Desenhar a letra reconhecida no histograma de posição
-                    reDrawHist(letterWhites, alphabetLetter.letterWhites)
+        compactnessDif = abs(compactness - mostNearLetter.letterCompactness)
+        print("Diferenças na compactness: " + str(compactnessDif))
+
+        # Desenhar a letra reconhecida no histograma de posição
+        if mostNearLetter.letterWhites:
+            reDrawHist(letterWhites, mostNearLetter.letterWhites)
 
         i += 1
         cv.waitKey(0)
@@ -645,7 +641,6 @@ def main():
     
         e_letter = Letter()
         e_letter.letterName = "e"
-        # a.letterWhites[0][1]
         e_letter.letterWhites = [(0, 10), (1, 18), (2, 23), (3, 26), (4, 29), (5, 32), (6, 34), (7, 29), (8, 26),
                                  (9, 25),
                                  (10, 23),
@@ -661,9 +656,10 @@ def main():
         e_letter.letterCircularity = 0.3348296627368844
         e_letter.letterCompactness = 37.53063725490196
 
+
+
         f_letter = Letter()
         f_letter.letterName = "f"
-        # a.letterWhites[0][1]
         f_letter.letterWhites = [(0, 7), (1, 7), (2, 7), (3, 7), (4, 7), (5, 7), (6, 48), (7, 52), (8, 52), (9, 51),
                                  (10, 53),
                                  (11, 55),
@@ -676,9 +672,10 @@ def main():
         f_letter.letterCircularity = 0.3765151464531834
         f_letter.letterCompactness = 33.37547169811321
 
+
+
         g_letter = Letter()
         g_letter.letterName = "g"
-        # a.letterWhites[0][1]
         g_letter.letterWhites = [(0, 13), (1, 23), (2, 29), (3, 35), (4, 37), (5, 40), (6, 42), (7, 32), (8, 28),
                                  (9, 24),
                                  (10, 23),
@@ -694,6 +691,8 @@ def main():
         g_letter.letterCircularity = 0.3272129744459175
         g_letter.letterCompactness = 38.40425531914894
 
+
+
         h_letter = Letter()
         h_letter.letterName = "h"
         h_letter.letterWhites = [(0, 55), (1, 55), (2, 55), (3, 55), (4, 55), (5, 55), (6, 55), (7, 9), (8, 7), (9, 6),
@@ -708,6 +707,8 @@ def main():
         h_letter.letterCircularity = 0.6522337689113757
         h_letter.letterCompactness = 19.266666666666666
 
+
+
         i_letter = Letter()
         i_letter.letterName = "i"
         i_letter.letterWhites = [(0, 47), (1, 47), (2, 47), (3, 47), (4, 47), (5, 47), (6, 47)]
@@ -715,6 +716,8 @@ def main():
         i_letter.letterPerimeter = 122
         i_letter.letterCircularity = 0.2777704872429567
         i_letter.letterCompactness = 45.24012158054711
+
+
 
         j_letter = Letter()
         j_letter.letterName = "j"
@@ -724,6 +727,8 @@ def main():
         j_letter.letterPerimeter = 72
         j_letter.letterCircularity = 0.9235700625136659
         j_letter.letterCompactness = 13.606299212598426
+
+
 
         k_letter = Letter()
         k_letter.letterName = "k"
@@ -737,6 +742,8 @@ def main():
         k_letter.letterCircularity = 0.5178290921206317
         k_letter.letterCompactness = 24.26740947075209
 
+
+
         l_letter = Letter()
         l_letter.letterName = "l"
         l_letter.letterWhites = [(0, 55), (1, 55), (2, 55), (3, 55), (4, 55), (5, 55), (6, 55), (7, 8), (8, 8), (9, 8),
@@ -748,6 +755,8 @@ def main():
         l_letter.letterPerimeter = 132
         l_letter.letterCircularity = 0.5178290921206317
         l_letter.letterCompactness = 24.26740947075209
+
+
 
         m_letter = Letter()
         m_letter.letterName = "m"
@@ -765,6 +774,23 @@ def main():
         m_letter.letterCircularity = 0.13499094372803405
         m_letter.letterCompactness = 93.09047160731473
 
+        
+        n_letter = Letter()
+        n_letter.letterName = "n"
+        n_letter.letterWhites = [(0, 40), (1, 40), (2, 40), (3, 40), (4, 40), (5, 40), (6, 33), (7, 9), (8, 7), (9, 6),
+                                 (10, 6), (11, 7), (12, 6), (13, 7), (14, 6), (15, 7), (16, 7), (17, 7), (18, 7),
+                                 (19, 7),
+                                 (20, 7), (21, 8), (22, 9), (23, 9), (24, 40), (25, 39), (26, 39), (27, 38), (28, 36),
+                                 (29, 34), (30, 33), (31, 9), (32, 7), (33, 6), (34, 6), (35, 6), (36, 6), (37, 6),
+                                 (38, 6),
+                                 (39, 7), (40, 7), (41, 7), (42, 7), (43, 7), (44, 8), (45, 8), (46, 9), (47, 9),
+                                 (48, 40),
+                                 (49, 40), (50, 39), (51, 38), (52, 37), (53, 36), (54, 33), (55, 1)]
+        n_letter.letterArea = 1039
+        n_letter.letterPerimeter = 311
+        n_letter.letterCircularity = 0.13499094372803405
+        n_letter.letterCompactness = 93.09047160731473
+        
         o_letter = Letter()
         o_letter.letterName = "o"
         o_letter.letterWhites = [(0, 14), (1, 20), (2, 24), (3, 28), (4, 30), (5, 32), (6, 34), (7, 24), (8, 18),
@@ -781,5 +807,106 @@ def main():
         o_letter.letterPerimeter = 192
         o_letter.letterCircularity = 0.2502093107351246
         o_letter.letterCompactness = 50.223433242506815
+        
+        
+        p_letter = Letter()
+        p_letter.letterName = "p"
+        p_letter.letterWhites = []
+        p_letter.letterArea = 734
+        p_letter.letterPerimeter = 192
+        p_letter.letterCircularity = 0.2502093107351246
+        p_letter.letterCompactness = 50.223433242506815
+        
+        
+        q_letter = Letter()
+        q_letter.letterName = "q"
+        q_letter.letterWhites = []
+        q_letter.letterArea = 734
+        q_letter.letterPerimeter = 192
+        q_letter.letterCircularity = 0.2502093107351246
+        q_letter.letterCompactness = 50.223433242506815
+        
+        
+        r_letter = Letter()
+        r_letter.letterName = "r"
+        r_letter.letterWhites = []
+        r_letter.letterArea = 734
+        r_letter.letterPerimeter = 192
+        r_letter.letterCircularity = 0.2502093107351246
+        r_letter.letterCompactness = 50.223433242506815
+        
+        
+        s_letter = Letter()
+        s_letter.letterName = "s"
+        s_letter.letterWhites = []
+        s_letter.letterArea = 734
+        s_letter.letterPerimeter = 192
+        s_letter.letterCircularity = 0.2502093107351246
+        s_letter.letterCompactness = 50.223433242506815
+        
+        
+        t_letter = Letter()
+        t_letter.letterName = "t"
+        t_letter.letterWhites = []
+        t_letter.letterArea = 734
+        t_letter.letterPerimeter = 192
+        t_letter.letterCircularity = 0.2502093107351246
+        t_letter.letterCompactness = 50.223433242506815
+        
+        
+        u_letter = Letter()
+        u_letter.letterName = "u"
+        u_letter.letterWhites = []
+        u_letter.letterArea = 734
+        u_letter.letterPerimeter = 192
+        u_letter.letterCircularity = 0.2502093107351246
+        u_letter.letterCompactness = 50.223433242506815
+        
+        
+        v_letter = Letter()
+        v_letter.letterName = "v"
+        v_letter.letterWhites = []
+        v_letter.letterArea = 734
+        v_letter.letterPerimeter = 192
+        v_letter.letterCircularity = 0.2502093107351246
+        v_letter.letterCompactness = 50.223433242506815
+        
+        
+        w_letter = Letter()
+        w_letter.letterName = "w"
+        w_letter.letterWhites = []
+        w_letter.letterArea = 734
+        w_letter.letterPerimeter = 192
+        w_letter.letterCircularity = 0.2502093107351246
+        w_letter.letterCompactness = 50.223433242506815
+        
+        
+        x_letter = Letter()
+        x_letter.letterName = "x"
+        x_letter.letterWhites = []
+        x_letter.letterArea = 734
+        x_letter.letterPerimeter = 192
+        x_letter.letterCircularity = 0.2502093107351246
+        x_letter.letterCompactness = 50.223433242506815
+        
+        
+        y_letter = Letter()
+        y_letter.letterName = "y"
+        y_letter.letterWhites = []
+        y_letter.letterArea = 734
+        y_letter.letterPerimeter = 192
+        y_letter.letterCircularity = 0.2502093107351246
+        y_letter.letterCompactness = 50.223433242506815
+        
+        
+        z_letter = Letter()
+        z_letter.letterName = "z"
+        z_letter.letterWhites = []
+        z_letter.letterArea = 734
+        z_letter.letterPerimeter = 192
+        z_letter.letterCircularity = 0.2502093107351246
+        z_letter.letterCompactness = 50.223433242506815
+        
+        
         
 """
