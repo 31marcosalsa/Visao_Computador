@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 # Classe que define uma letra e seus parametros a serem medidos
 class Letter:
     letterName = ""
-    letterWhites = []
+    letterHistPos = []
     letterArea = 0
     letterPerimeter = 0
     letterCircularity = 0
@@ -25,7 +25,7 @@ def fillAlphabetLetterParams():
     a_letter = Letter()
     a_letter.letterName = "a"
     # a.letterWhites[0][1]
-    a_letter.letterWhites = [(0, 6), (1, 13), (2, 18), (3, 22), (4, 24), (5, 28), (6, 30), (7, 28), (8, 25),
+    a_letter.letterHistPos = [(0, 6), (1, 13), (2, 18), (3, 22), (4, 24), (5, 28), (6, 30), (7, 28), (8, 25),
                              (9, 23), (10, 23), (11, 21), (12, 21), (13, 19), (14, 21), (15, 21), (16, 21),
                              (17, 21), (18, 20), (19, 20), (20, 21), (21, 20), (22, 21), (23, 22), (24, 22),
                              (25, 22), (26, 22), (27, 25), (28, 34), (29, 39), (30, 38), (31, 38), (32, 37),
@@ -39,7 +39,7 @@ def fillAlphabetLetterParams():
 
     b_letter = Letter()
     b_letter.letterName = "b"
-    b_letter.letterWhites = [(0, 55), (1, 55), (2, 55), (3, 55), (4, 55), (5, 55), (6, 45), (7, 14), (8, 13),
+    b_letter.letterHistPos = [(0, 55), (1, 55), (2, 55), (3, 55), (4, 55), (5, 55), (6, 45), (7, 14), (8, 13),
                              (9, 14), (10, 13), (11, 13), (12, 14), (13, 14), (14, 13), (15, 14), (16, 14),
                              (17, 14), (18, 14), (19, 14), (20, 14), (21, 16), (22, 14), (23, 16), (24, 18),
                              (25, 18), (26, 20), (27, 24), (28, 34), (29, 32), (30, 30), (31, 27), (32, 24),
@@ -53,7 +53,7 @@ def fillAlphabetLetterParams():
 
     c_letter = Letter()
     c_letter.letterName = "c"
-    c_letter.letterWhites = [(0, 6), (1, 17), (2, 22), (3, 26), (4, 30), (5, 32), (6, 34), (7, 26), (8, 20),
+    c_letter.letterHistPos = [(0, 6), (1, 17), (2, 22), (3, 26), (4, 30), (5, 32), (6, 34), (7, 26), (8, 20),
                              (9, 18), (10, 16), (11, 16), (12, 15), (13, 14), (14, 16), (15, 14), (16, 14),
                              (17, 14), (18, 14), (19, 14), (20, 14), (21, 14), (22, 15), (23, 14), (24, 15),
                              (25, 16), (26, 16), (27, 20), (28, 23), (29, 22), (30, 21), (31, 17), (32, 14),
@@ -67,7 +67,7 @@ def fillAlphabetLetterParams():
 
     d_letter = Letter()
     d_letter.letterName = "d"
-    d_letter.letterWhites = [(0, 12), (1, 19), (2, 24), (3, 27), (4, 30), (5, 32), (6, 34), (7, 23), (8, 19),
+    d_letter.letterHistPos = [(0, 12), (1, 19), (2, 24), (3, 27), (4, 30), (5, 32), (6, 34), (7, 23), (8, 19),
                              (9, 18), (10, 18), (11, 16), (12, 14), (13, 16), (14, 15), (15, 14), (16, 14),
                              (17, 14), (18, 14), (19, 14), (20, 13), (21, 14), (22, 14), (23, 14), (24, 13),
                              (25, 14), (26, 14), (27, 14), (28, 43), (29, 55), (30, 55), (31, 55), (32, 55),
@@ -147,23 +147,23 @@ def getThreshold(image, imageName, imageExtension):
 
 # Array base para Histograma de posição [(posX, número pixeis brancos)]
 def getPosHistogram(image, imageSize):
-    whites = []
+    baseArrayForPosHistogram = []
     for column in range(imageSize[1]):
         whitePixel = 0
         for row in range(imageSize[0]):
             if image.item(row, column) == 255:
                 whitePixel += 1
-        whites.append(tuple((column, whitePixel)))
-    # print(whites)
-    return whites
+        baseArrayForPosHistogram.append(tuple((column, whitePixel)))
+    # print(baseArrayForPosHistogram)
+    return baseArrayForPosHistogram
 
 
 # Guardar posições iniciais e finais onde há letras no eixo do x
-def getXPos(whites):
+def getXPos(baseArrayForPosHistogram):
     letterPosX = []
     xMin = 0
     xMax = 0
-    for current, next in zip(whites, whites[1:]):
+    for current, next in zip(baseArrayForPosHistogram, baseArrayForPosHistogram[1:]):
         if current[1] == 0 and next[1] != 0:
             xMin = next[0]
 
@@ -203,12 +203,12 @@ def getYPos(letterPosX, thresholdImage, imageSize):
 
 
 # Histograma de Posição
-def drawHist(whites):
+def drawHist(baseArrayForPosHistogram):
     xAxis = []
     yAxis = []
-    for i in range(len(whites)):
-        xAxis.append(whites[i][0])
-        yAxis.append(whites[i][1])
+    for i in range(len(baseArrayForPosHistogram)):
+        xAxis.append(baseArrayForPosHistogram[i][0])
+        yAxis.append(baseArrayForPosHistogram[i][1])
     plt.bar(xAxis, yAxis, color=(0, 0.63, 0.9))
     plt.xlabel("Posição X")
     plt.ylabel("Número Pixeis Brancos")
@@ -230,7 +230,28 @@ def letterPos(letterPosX, letterPosY):
     return letterCoords
 
 
-# Mostra no terminal a posição (x,y) do click do rato
+# Recortar a ROI de uma dada letra (mediante a letterPosition dada)
+# topLeftX = xMin; topLeftY = yMin; bottomRightX = xMax; bottomRightY = yMax
+def getLetterROI(letterPosition, testImage, thresholdImage, imageName):
+
+    # Recorta a ROI apenas com 1 pixel preto na borda da imagem (necessario para o algoritmo de calculo do perimetro)
+    topLeftX = letterPosition[0] - 1
+    topLeftY = letterPosition[2] - 1
+    bottomRightX = letterPosition[1] + 1
+    bottomRightY = letterPosition[3] + 1
+
+    # Desenha um retangulo verde com a letra que foi identificada na image input
+    cv.rectangle(testImage, (topLeftX, topLeftY), (bottomRightX, bottomRightY), (0, 255, 0), 2)
+
+    imageROI = thresholdImage[topLeftY: bottomRightY, topLeftX: bottomRightX]
+    imageROISize = imageROI.shape
+    cv.imshow(imageName, testImage)
+    cv.imshow("imageROI", imageROI)
+
+    return imageROI, imageROISize
+
+
+# Mostra no terminal a posição (x,y) do click do rato na imagem de input
 def showMousePos(event, x, y, flags, param):
     if event == cv.EVENT_LBUTTONDOWN:
         print("X -> " + str(x) + ", Y -> " + str(y))
@@ -291,43 +312,60 @@ def calcROICompc(area, perimeter):
     return compactness
 
 
-def getTotalPixelDiffBetweenHists(letterInputWhites, alphabetLetterWhites):
+# Do histograma de posição da imagem original com as várias letras, retorna apenas a porção do histograma de uma letra em específico
+def getPositionHistogramOfLetter(letterPosX, baseArrayForPosHistogram, letterOrder):
+    letterInputPositionHistogram = []
+
+    for j in range(letterPosX[letterOrder][0], letterPosX[letterOrder][1] + 1):
+        letterInputPositionHistogram.append(baseArrayForPosHistogram[j])
+
+    return letterInputPositionHistogram
+
+
+
+# Calcula a totalidade de pixeis diferentes entre os dois histogramas
+def getTotalPixelDiffBetweenHists(letterInputHistPos, alphabetLetterHistPos):
     totalHistDif = 0
     lastCommonIndex = 0
 
-    if len(letterInputWhites) > len(alphabetLetterWhites):
-        print("    hist input larger")
+    # se o histograma da letra a ser avaliada for maior que o histograma da letra default que está a ser usado como comparação
+    if len(letterInputHistPos) > len(alphabetLetterHistPos):
+        print("    Histogram Input is Larger")
 
-        # percorre primeiro o histograma mais pequeno
-        for value in range(len(alphabetLetterWhites)):
-            histDif = abs(letterInputWhites[value][1] - alphabetLetterWhites[value][1])
+        # percorre primeiro o histograma mais pequeno (histograma da letra default)
+        for value in range(len(alphabetLetterHistPos)):
+            histDif = abs(letterInputHistPos[value][1] - alphabetLetterHistPos[value][1])
             totalHistDif += histDif
             lastCommonIndex = value
 
-        # percorre depois o resto
-        for remain in range(lastCommonIndex + 1, len(letterInputWhites)):
-            totalHistDif += letterInputWhites[remain][1]
+        # percorre depois o resto (histograma da letra a ser avaliada)
+        for remain in range(lastCommonIndex + 1, len(letterInputHistPos)):
+            totalHistDif += letterInputHistPos[remain][1]
 
         print("    TotalHistDif: ", totalHistDif)
 
 
-    elif len(letterInputWhites) < len(alphabetLetterWhites):
-        print("    hist input smaller")
+    # se o histograma da letra a ser avaliada for menor que o histograma da letra default que está a ser usado como comparação
+    elif len(letterInputHistPos) < len(alphabetLetterHistPos):
+        print("    Histogram Input is Smaller")
 
-        for value in range(len(letterInputWhites)):
-            histDif = abs(letterInputWhites[value][1] - alphabetLetterWhites[value][1])
+        # percorre primeiro o histograma mais pequeno (histograma da letra a ser avaliada)
+        for value in range(len(letterInputHistPos)):
+            histDif = abs(letterInputHistPos[value][1] - alphabetLetterHistPos[value][1])
             totalHistDif += histDif
             lastCommonIndex = value
 
-        for remain in range(lastCommonIndex + 1, len(alphabetLetterWhites)):
-            totalHistDif += alphabetLetterWhites[remain][1]
+        # percorre depois o resto (histograma da letra default)
+        for remain in range(lastCommonIndex + 1, len(alphabetLetterHistPos)):
+            totalHistDif += alphabetLetterHistPos[remain][1]
 
         print("    TotalHistDif: ", totalHistDif)
 
+    # se o histograma da letra a ser avaliada tiver o mesmo tamanho que o histograma da letra default que está a ser usado como comparação
     else:
-        print("    hist input equal")
-        for value in range(len(letterInputWhites)):
-            histDif = abs(letterInputWhites[value][1] - alphabetLetterWhites[value][1])
+        print("    Histogram Input is Equal")
+        for value in range(len(letterInputHistPos)):
+            histDif = abs(letterInputHistPos[value][1] - alphabetLetterHistPos[value][1])
             totalHistDif += histDif
 
         print("    TotalHistDif: ", totalHistDif)
@@ -336,20 +374,20 @@ def getTotalPixelDiffBetweenHists(letterInputWhites, alphabetLetterWhites):
 
 
 
-# Histograma de Posição redesenhado com os dois histogramas (da letra input e da letra reconhecida)
-def reDrawHist(whites, reconWhites):
+# Histograma de Posição redesenhado com os dois histogramas (da letra a ser avaliada e da letra que foi reconhecida como igual)
+def reDrawHist(letterHistPos, alphabetLetterHistPos):
     xAxis1 = []
     xAxis2 = []
     yAxis1 = []
     yAxis2 = []
 
-    # print(len(whites))
+    # print(len(letterHistPos))
     space = 0
-    for i in range(len(whites)):
-        xAxis1.append(whites[i][0] + space)
-        xAxis2.append(whites[i][0] + space + 1)
-        yAxis1.append(whites[i][1])
-        yAxis2.append(reconWhites[i][1])
+    for i in range(len(letterHistPos)):
+        xAxis1.append(letterHistPos[i][0] + space)
+        xAxis2.append(letterHistPos[i][0] + space + 1)
+        yAxis1.append(letterHistPos[i][1])
+        yAxis2.append(alphabetLetterHistPos[i][1])
         space += 2
 
     plt.bar(xAxis1, yAxis1, color=(0, 0.63, 0.9))
@@ -372,7 +410,7 @@ def main():
     imageSize = testImage.shape
     print("Image Input Size: ", imageSize)
 
-    # Operações morfológicas na imagem de teste
+    # Operações morfológicas na imagem de input
     # Greyscale
     greyImage = getGreyscale(testImage, imageName, imageExtension)
 
@@ -380,38 +418,27 @@ def main():
     thresholdImage = getThreshold(greyImage, imageName, imageExtension)
 
     # Array base para Histograma de posição [(posX, número pixeis brancos)]
-    whites = getPosHistogram(thresholdImage, imageSize)
+    baseArrayForPosHistogram = getPosHistogram(thresholdImage, imageSize)
 
     # Guardar posições iniciais e finais onde há letras no eixo do x
-    letterPosX = getXPos(whites)
+    letterPosX = getXPos(baseArrayForPosHistogram)
 
     # Guardar posições iniciais e finais onde há letras no eixo do y
     letterPosY = getYPos(letterPosX, thresholdImage, imageSize)
 
-    # Histograma de Posição
-    drawHist(whites)
+    # Desenha Histograma de Posição
+    drawHist(baseArrayForPosHistogram)
 
     # Definir os limites das letras no espaço num único array [(xMin, xMax, yMin, yMax)]
     letterCoords = letterPos(letterPosX, letterPosY)
 
-    # Definir a ROI na imagem inicial, para cada letra identificada atraves do histograma
-    # topLeftX = xMin; topLeftY = yMin; bottomRightX = xMax; bottomRightY = yMax
-    i = 0
+    # Para cada letra que vai sendo identificada (para cada um dos elementos do array letterCoords, elementos esses que correspondem a posições das letras na imagem input):
+    letterOrder = 0
     for letterPosition in letterCoords:
         print("NOVA LETRA RECONHECIDA:  ")
 
-        # Recorta a ROI apenas com 1 pixel preto na borda da imagem (necessario para o algoritmo de calculo do perimetro)
-        topLeftX = letterPosition[0] - 1
-        topLeftY = letterPosition[2] - 1
-        bottomRightX = letterPosition[1] + 1
-        bottomRightY = letterPosition[3] + 1
-
-        cv.rectangle(testImage, (topLeftX, topLeftY), (bottomRightX, bottomRightY), (0, 255, 0), 2)
-
-        imageROI = thresholdImage[topLeftY: bottomRightY, topLeftX: bottomRightX]
-        imageROISize = imageROI.shape
-        cv.imshow(imageName, testImage)
-        cv.imshow("imageROI", imageROI)
+        # Recortar a ROI da letra identificada
+        imageROI, imageROISize = getLetterROI(letterPosition, testImage, thresholdImage, imageName)
 
         # Calcular perimetro, area, circularidade e compactividade da letra identificada
         perimeter = calcROIPerimeter(imageROI, imageROISize)
@@ -422,41 +449,43 @@ def main():
 
         compactness = calcROICompc(area, perimeter)
 
-        # histograma com as posições X APENAS onde há pixeis não pretos [(posX, número pixeis brancos)]
-        letterWhites = []
-
-        for j in range(letterPosX[i][0], letterPosX[i][1] + 1):
-            letterWhites.append(whites[j])
-
-        print("  letterWhites: ", letterWhites, "\n  len(letterWhites): ", len(letterWhites))
+        # histograma de posição da letra a ser identificada [(posX, número pixeis brancos)]
+        letterHistPos = getPositionHistogramOfLetter(letterPosX, baseArrayForPosHistogram, letterOrder)
 
 
-        # =================================================================================================================================== #
+        print("  letterHistPos: ", letterHistPos, "\n  len(letterHistPos): ", len(letterHistPos))
+
 
         # Reconhecer a letra identificada com base nos parâmetros medidos e comparando com os parâmetros das letras default
         print("    -> STARTED HISTS EVAL")
 
+
+        # Antes de comparar o número de pixeis diferentes entre o histograma da letra a ser identificada e de cada uma das letras default, considera-se que a menor diferença de pixeis são todos os pixeis da ROI da letra que está a ser identificada
         minHistDif = imageROISize[0] * imageROISize[1]
         mostNearLetter = "Nada Reconhecido"
 
 
+        # Neste ciclo, compara-se a letra a ser identificada com todas as letras default (para encontrar aquela cujos parametros mais se aproximam dos da letra a ser identificada)
         for alphabetLetter in alphabetLetterParams:
-            print("    lenWhitesInput: ", len(letterWhites), "  letterTryingToRecon: ", alphabetLetter.letterName, " len", len(alphabetLetter.letterWhites))
+            print("    lenWhitesInput: ", len(letterHistPos), "  letterTryingToRecon: ", alphabetLetter.letterName, " len", len(alphabetLetter.letterHistPos))
 
 
             # se os histogramas tiverem um tamanho próximo, então avalia a diferença que há no número de pixeis ao longo das posições
-            if abs(len(letterWhites) - len(alphabetLetter.letterWhites)) < 5:
-                totalHistDif = getTotalPixelDiffBetweenHists(letterWhites, alphabetLetter.letterWhites)
+            if abs(len(letterHistPos) - len(alphabetLetter.letterHistPos)) < 5:
+                totalHistDif = getTotalPixelDiffBetweenHists(letterHistPos, alphabetLetter.letterHistPos)
 
-                # Após calcular a diferença total
+                # Após calcular a diferença total, avaliar a letra com parâmetros mais próximos
                 print("      -> STARTED LETTER EVAL")
+
+
 
                 if totalHistDif < 50 and totalHistDif < minHistDif and abs(circularity - alphabetLetter.letterCircularity) < 0.1:
                     minHistDif = totalHistDif
                     mostNearLetter = alphabetLetter
 
 
-        # Apresentar a letra reconhecida depois de avaliar o histograma da letra reconhecida com os histogramas de todas as letras default
+        # Apresentar a letra reconhecida depois de avaliar o histograma da letra a ser identificada com os histogramas de todas as letras default
+        # Apresenta-se também a diferença entre a área, perimetro, circularidade e compactividade da letra a ser identificada e da letra que foi reconhecida
         print("Letra Reconhecida: ", mostNearLetter.letterName)
 
         areaDif = abs(area - mostNearLetter.letterArea)
@@ -474,14 +503,13 @@ def main():
         compactnessDif = abs(compactness - mostNearLetter.letterCompactness)
         print("Diferenças na compactness: " + str(compactnessDif))
 
-        # Desenhar a letra reconhecida no histograma de posição
-        if mostNearLetter.letterWhites:
-            reDrawHist(letterWhites, mostNearLetter.letterWhites)
+        # Desenhar os dois histogramas de posição (da letra a ser identificada e da letra que foi reconhecida)
+        if mostNearLetter.letterHistPos:
+            reDrawHist(letterHistPos, mostNearLetter.letterHistPos)
 
-        i += 1
+        letterOrder += 1
         cv.waitKey(0)
         cv.destroyWindow("imageROI")
-        # cv.destroyWindow("imageContour")
 
     cv.imshow(imageName, testImage)
     cv.setMouseCallback(imageName, showMousePos)
