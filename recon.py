@@ -291,10 +291,52 @@ def calcROICompc(area, perimeter):
     return compactness
 
 
-# def reconLetter(letter, area, perimeter, circularity, compactness, whites):
+def getTotalPixelDiffBetweenHists(letterInputWhites, alphabetLetterWhites):
+    totalHistDif = 0
+    lastCommonIndex = 0
+
+    if len(letterInputWhites) > len(alphabetLetterWhites):
+        print("    hist input larger")
+
+        # percorre primeiro o histograma mais pequeno
+        for value in range(len(alphabetLetterWhites)):
+            histDif = abs(letterInputWhites[value][1] - alphabetLetterWhites[value][1])
+            totalHistDif += histDif
+            lastCommonIndex = value
+
+        # percorre depois o resto
+        for remain in range(lastCommonIndex + 1, len(letterInputWhites)):
+            totalHistDif += letterInputWhites[remain][1]
+
+        print("    TotalHistDif: ", totalHistDif)
 
 
-# Histograma de Posição
+    elif len(letterInputWhites) < len(alphabetLetterWhites):
+        print("    hist input smaller")
+
+        for value in range(len(letterInputWhites)):
+            histDif = abs(letterInputWhites[value][1] - alphabetLetterWhites[value][1])
+            totalHistDif += histDif
+            lastCommonIndex = value
+
+        for remain in range(lastCommonIndex + 1, len(alphabetLetterWhites)):
+            totalHistDif += alphabetLetterWhites[remain][1]
+
+        print("    TotalHistDif: ", totalHistDif)
+
+    else:
+        print("    hist input equal")
+        for value in range(len(letterInputWhites)):
+            histDif = abs(letterInputWhites[value][1] - alphabetLetterWhites[value][1])
+            totalHistDif += histDif
+
+        print("    TotalHistDif: ", totalHistDif)
+
+    return totalHistDif
+
+
+
+# Histograma de Posição redesenhado com os dois histogramas (da letra input e da letra reconhecida)
 def reDrawHist(whites, reconWhites):
     xAxis1 = []
     xAxis2 = []
@@ -321,8 +363,8 @@ def reDrawHist(whites, reconWhites):
 
 # Início do programa
 def main():
-    alphabetLetterParams = fillAlphabetLetterParams()
     # TODO
+    alphabetLetterParams = fillAlphabetLetterParams()
     imageInput = "atst.png"
     imageName = imageInput.partition(".")[0]
     imageExtension = imageInput.partition(".")[2]
@@ -404,46 +446,7 @@ def main():
 
             # se os histogramas tiverem um tamanho próximo, então avalia a diferença que há no número de pixeis ao longo das posições
             if abs(len(letterWhites) - len(alphabetLetter.letterWhites)) < 5:
-                totalHistDif = 0
-                lastSmallestCommonIndex = 0
-
-                if len(letterWhites) > len(alphabetLetter.letterWhites):
-                    print("    hist input larger")
-
-                    # percorre primeiro o histograma mais pequeno
-                    for value in range(len(alphabetLetter.letterWhites)):
-                        histDif = abs(letterWhites[value][1] - alphabetLetter.letterWhites[value][1])
-                        totalHistDif += histDif
-                        lastSmallestCommonIndex = value
-
-                    # percorre depois o resto
-                    for remain in range(lastSmallestCommonIndex + 1, len(letterWhites)):
-                        totalHistDif += letterWhites[remain][1]
-
-                    print("    TotalHistDif: ", totalHistDif)
-
-
-                elif len(letterWhites) < len(alphabetLetter.letterWhites):
-                    print("    hist input smaller")
-
-                    for value in range(len(letterWhites)):
-                        histDif = abs(letterWhites[value][1] - alphabetLetter.letterWhites[value][1])
-                        totalHistDif += histDif
-                        lastSmallestCommonIndex = value
-
-                    for remain in range(lastSmallestCommonIndex + 1, len(alphabetLetter.letterWhites)):
-                        totalHistDif += alphabetLetter.letterWhites[remain][1]
-
-                    print("    TotalHistDif: ", totalHistDif)
-
-                else:
-                    print("    hist input equal")
-                    for value in range(len(letterWhites)):
-                        histDif = abs(letterWhites[value][1] - alphabetLetter.letterWhites[value][1])
-                        totalHistDif += histDif
-
-                    print("    TotalHistDif: ", totalHistDif)
-
+                totalHistDif = getTotalPixelDiffBetweenHists(letterWhites, alphabetLetter.letterWhites)
 
                 # Após calcular a diferença total
                 print("      -> STARTED LETTER EVAL")
