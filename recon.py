@@ -372,6 +372,19 @@ def main():
         alphabetLetterParams.append(k_letter)
         alphabetLetterParams.append(l_letter)
         alphabetLetterParams.append(m_letter)
+        alphabetLetterParams.append(n_letter)
+        alphabetLetterParams.append(o_letter)
+        alphabetLetterParams.append(p_letter)
+        alphabetLetterParams.append(q_letter)
+        alphabetLetterParams.append(r_letter)
+        alphabetLetterParams.append(s_letter)
+        alphabetLetterParams.append(t_letter)
+        alphabetLetterParams.append(u_letter)
+        alphabetLetterParams.append(v_letter)
+        alphabetLetterParams.append(w_letter)
+        alphabetLetterParams.append(x_letter)
+        alphabetLetterParams.append(y_letter)
+        alphabetLetterParams.append(z_letter)
         """
 
 
