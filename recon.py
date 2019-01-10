@@ -356,7 +356,7 @@ def getGreyscale(image, imageName, imageExtension):
 
 # Threshold
 def getThreshold(image, imageName, imageExtension):
-    thresholdImage = cv.adaptiveThreshold(image, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 11, 2)
+    thresholdImage = cv.adaptiveThreshold(image, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 13, 2)
     cv.imwrite(imageName + "Threshold." + imageExtension, thresholdImage)
     cv.imshow(imageName + "Threshold", thresholdImage)
     cv.setMouseCallback(imageName + "Threshold", showMousePos)
@@ -619,7 +619,7 @@ def reDrawHist(letterHistPos, alphabetLetterHistPos):
 def main():
     # TODO
     alphabetLetterParams = fillAlphabetLetterParams()
-    imageInput = "atst.png"
+    imageInput = "tst2.png"
     imageName = imageInput.partition(".")[0]
     imageExtension = imageInput.partition(".")[2]
     testImage = readImage(imageInput)
